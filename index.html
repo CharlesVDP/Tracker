@@ -1,0 +1,275 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+	<script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
+	<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+	<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
+	<meta charset="utf-8" />
+	<link rel="icon" href="icon.png">
+	<title>Data Collector</title>
+	<style>
+		.target {
+			width: 5vmin;
+			height: 5vmin;
+			position: fixed;
+			display: none;
+			border-radius: 5vmin;
+			z-index: 9001;
+		}
+
+		body {
+			width: 100vw;
+			height: 100vh;
+			overflow: hidden;
+		}
+
+		#stop {
+			display: none;
+		}
+
+		.custom-border-radius {
+			border-top-left-radius: 0px;
+			border-top-right-radius: 0px;
+			border-bottom-left-radius: 10px;
+			border-bottom-right-radius: 10px;
+			border-top: none;
+		}
+
+		.btn {
+			width: 230px;
+		}
+
+		.crosshair {
+			cursor: crosshair;
+		}
+
+		.header{
+			height: 5vh;
+		}
+
+		.canvas{
+			height: 95vh;
+		}
+
+		.clock{
+			z-index: -1;
+			display: none;
+		}
+
+		.noselect {
+		  -webkit-touch-callout: none;
+			-webkit-user-select: none;
+			   -moz-user-select: none;
+				-ms-user-select: none;
+					user-select: none;
+		}
+
+		.shadow{
+			box-shadow: 0 .5rem 1rem rgba(0,0,0,.3) !important;
+		}
+	</style>
+</head>
+<body>
+	<div class="modal fade shadow" id="scoreboard" tabindex="-1" role="dialog">
+		<div class="modal-dialog modal-lg">
+			<div class="modal-content">
+				
+				<div class="modal-body align-items-center">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+					<h5 class="text-secondary">Score: <span class="score">0</span></h5>
+					<h5 class="text-secondary">Accuracy: <span class="accuracy">0</span>%</h5>
+					<h5 class="text-secondary">Hits: <span class="hits">0</span></h5>
+					<h5 class="text-secondary">Misses: <span class="misses">0</span></h5>
+					<h5 class="text-secondary">Avg. Time to Kill: <span class="ttk">0</span>ms</h5>
+				</div>
+				<div class="modal-footer justify-content-between border-top-0">
+					<button id="reset" type="button" class="btn btn-outline-secondary" data-dismiss="modal">Reset</button>
+					<button id="download" type="button" class="btn btn-outline-info">Download Mouse Data</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="container-fluid header">
+		<div class="row align-items-center justify-content-between">
+			<div class="col text-left">
+				<h5 class="text-secondary noselect">Hits: <span class="hits">0</span></h5>
+			</div>
+			<div class="col-auto">
+				<button id="start" class="shadow btn btn-sm btn-outline-info custom-border-radius start noselect">Start</button>
+				<button id="challenge" class="shadow btn btn-sm btn-outline-primary custom-border-radius start noselect">Challenge</button>
+				<button id="stop" class="shadow btn btn-sm btn-outline-danger custom-border-radius noselect">Stop</button>
+			</div>
+			<div class="col text-right">
+				<h5 class="text-secondary noselect">Accuracy: <span class="accuracy">0</span>%</h5>
+			</div>
+		</div>
+		<div class="row align-items-center justify-content-center">
+			<div class="col-auto">
+				<h1 class="text-secondary noselect"><span class="clock">60</span></h1>
+			</div>
+		</div>
+	</div>
+	<div class="container-fluid canvas crosshair" oncontextmenu="return false;"></div>
+</body>
+</html>
+
+<script type="text/javascript">
+	$(function () {
+		let started = false;
+		let data = [];
+		let row = [];
+		let hits = 0;
+		let shots = 0;
+		let score = 0;
+		let totalTtk = 0;
+		let timer;
+		let challengeStart;
+
+		let start = Date.now();
+
+		function spawnTarget() {
+			let x = (Math.random() * 95).toFixed(0);
+			let y = Math.max(10, (Math.random() * 95).toFixed(0));
+			$('body').append(`<div class="target bg-info crosshair shadow" style="left:${x}vw; top:${y}vh;"></div>`);
+			$('.target').fadeIn(10);
+			start = Date.now();
+		}
+
+		function updateAccuracy() {
+			let accuracy = ((hits / shots) * 100).toFixed(1);
+			$('.accuracy').html(accuracy);
+			$('.hits').html(hits);
+			$('.misses').html(shots - hits);
+		}
+
+		function updateScore(showFinalScore) {
+			if (showFinalScore) {
+				$('.score').html(Math.round(score * (hits / shots)));
+			} else {
+				score += 100
+			}
+		}
+
+		function updateTimeToKill() {
+			let ttk = Date.now() - start;
+			totalTtk += ttk;
+
+			let avgTtk = (totalTtk / hits).toFixed(0);
+			$('.ttk').html(avgTtk);
+		}
+
+		function beginChallenge() {
+			$('.clock').html(60);
+			$('.clock').fadeIn(500);
+			challengeStart = Date.now();
+			timer = setInterval(countdown, 100);
+		}
+
+		function countdown() {
+			let elapsed = Date.now() - challengeStart;
+			if (elapsed > 60000) {
+				$('.clock').html(0);
+				gameEnd();
+			} else {
+				let remaining = Math.round(60 - elapsed / 1000);
+				$('.clock').html(remaining);
+			}
+		}
+
+		function gameEnd() {
+			clearInterval(timer);
+			updateScore(true);
+			$('#scoreboard').modal('show');
+			started = false;
+			$('.target').remove();
+			$('#stop').hide();
+			$('.clock').fadeOut(500);
+			$('.start').fadeIn(250);
+		}
+
+		$(document).on('click', '.target', function () {
+			let audio = new Audio('sounds/owhitmarker.mp3');
+			let me = $(this);
+			audio.play();
+			me.removeClass('bg-info').addClass('bg-danger');
+			me.fadeOut(10, function () {
+				me.remove();
+			});
+			hits++;
+			updateTimeToKill();
+			updateScore();
+			spawnTarget();
+		});
+
+		$(document).on('click', function () {
+			if (started && row.length > 0) {
+				data.push(row);
+				row = [];
+				shots++;
+				updateAccuracy();
+			}
+		});
+
+		$('body').on('mousemove', function (e) {
+			let x = Math.round(e.clientX * (1000 / window.innerWidth));
+			let y = Math.round(e.clientY * (1000 / window.innerHeight));
+
+			if (started) {
+				row.push([x, y]);
+			}
+		});
+
+		$('body').on('mouseleave', function () {
+			row = [];
+		});
+
+		$('.start').on('click', function (e) {
+			e.stopPropagation();
+			started = true;
+			spawnTarget();
+			$('.start').hide();
+			$('#stop').fadeIn(250);
+			if (this.id == 'challenge') {
+				beginChallenge();
+			}
+		});
+
+		$('#stop').on('click', function (e) {
+			e.stopPropagation();
+			gameEnd();
+		});
+
+		$('#download').on('click', function () {
+			download();
+		});
+
+		$('#reset').on('click', function () {
+			data = [];
+			row = [];
+			score = 0;
+			hits = 0;
+			shots = 0;
+			totalTtk = 0;
+			$('.accuracy').html(0);
+			$('.hits').html(0);
+			$('.misses').html(0);
+			$('.score').html(0);
+		});
+
+		function download() {
+			let json = {};
+			json['data'] = data;
+			let jsons = JSON.stringify(json);
+			var hiddenElement = document.createElement('a');
+			hiddenElement.href = 'data:text/json;charset=utf-8,' + encodeURI(jsons);
+			hiddenElement.target = '_blank';
+			hiddenElement.download = `data${Date.now()}.JSON`;
+			hiddenElement.click();
+		}
+	})
+</script>
