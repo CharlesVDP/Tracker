@@ -76,7 +76,6 @@
 	$(function () {
 		spawnTarget();
 		moveTarget();
-		setInterval(moveTarget, 1500);
 
 		function spawnTarget() {
 			let x = (Math.random() * 95).toFixed(0);
@@ -86,14 +85,15 @@
 		}
 
 		function moveTarget() {
-			$(".target").each(function (index, element) {
-				let x = (Math.random() * 95).toFixed(0);
-				let y = Math.max(10, (Math.random() * 95).toFixed(0));
-				$(element).animate({
-					left: x + 'vw',
-					top: y + 'vh'
-				}, 1500);
-			});
+			let x = (Math.random() * 95).toFixed(0);
+			let y = Math.max(10, (Math.random() * 95).toFixed(0));
+			let wait = Math.max(1000, 3000 * Math.max(x, y) / 100);
+			$(".target").animate({
+				left: x + 'vw',
+				top: y + 'vh'
+			}, wait);
+
+			setTimeout(moveTarget, wait);
 		}
 	})
 </script>
