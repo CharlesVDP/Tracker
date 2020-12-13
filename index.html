@@ -85,10 +85,15 @@
 		}
 
 		function moveTarget() {
+			debugger;
 			let x = (Math.random() * 95).toFixed(0);
 			let y = Math.max(10, (Math.random() * 95).toFixed(0));
+			let xpx = window.innerWidth * x / 100;
+			let ypx = window.innerHeight * y / 100;
 			let teleport = Math.random() > 0.9 ? 0 : 1;
-			let wait = Math.max(1000, 3000 * Math.max(x, y) / 100);
+			let currentX = parseInt($('.target').css('left'));
+			let currentY = parseInt($('.target').css('top'));
+			let wait = Math.max(1000, Math.max(Math.abs(xpx - currentX), Math.abs(ypx - currentY)) * 10);
 			$(".target").animate({
 				left: x + 'vw',
 				top: y + 'vh'
