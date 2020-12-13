@@ -87,13 +87,14 @@
 		function moveTarget() {
 			let x = (Math.random() * 95).toFixed(0);
 			let y = Math.max(10, (Math.random() * 95).toFixed(0));
+			let teleport = Math.random() > 0.9 ? 0 : 1;
 			let wait = Math.max(1000, 3000 * Math.max(x, y) / 100);
 			$(".target").animate({
 				left: x + 'vw',
 				top: y + 'vh'
-			}, wait);
+			}, wait * teleport);
 
-			setTimeout(moveTarget, wait);
+			setTimeout(moveTarget, wait * teleport);
 		}
 	})
 </script>
